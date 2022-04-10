@@ -6,32 +6,106 @@
     </head>
     <body>
         <h1>PE Tracker</h1>
+        <p>* For testing purposes, tracking is limited to a single behavior. Go to /db-info to see updated database. *</p>
+        <h3>Planned Pres.</h3>
         <% tasks.forEach(function(r) {%>
-            <button id='<%= r.id %>'
-                onClick='javascript:logTask(<%= r.id %>);'><%= r.name %>
+            <button id='plannedPres'
+                onClick='javascript:logTask(<%= r.id %>);'>Start
+            </button>
+            <button id='plannedPresReset'
+                onClick='javascript:reset()'>Reset
             </button>
                 <% }); %>
+        <h3 id="total">Total time: 00:00</h3>
                 <script>
+                    // Variables
                     let currentTaskId = null;
+                    let buttonStatusId = 1;
+                    let button = document.querySelector('#plannedPres');
+                    let totalTime = document.querySelector('#total');
+                    let seconds = 0;
+                    let minutes = 0;
+                    let interval = null;
+                    let formatSeconds = 0;
+                    let formatMinutes = 0;
+                    let finalTime = null;
 
-                    const logTask = async function(id) {
-                        const response = await fetch('/log', {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                users_id: -1,
-                                students_id: -1,
-                                tasks_id: id,
-                                duration: "'+00:00:01'"
-                            })
-                        });
-                        const result = await response.json();
-                        console.log(result);
-                        currentTaskId = id;
+                    // Timer function to increase seconds/minutes
+                    const timer = function(){
+                        seconds++;
+                        if(seconds / 60 === 1){
+                            seconds = 0;
+                            minutes++;
+                        }
+
+                        // Formatting for time to always match ##:## format
+                        if(seconds < 10){
+                        formatSeconds = "0" + seconds.toString();
+                        } else {
+                        formatSeconds = seconds;
+                        }
+
+                         if(minutes < 10) {
+                        formatMinutes = "0" + minutes.toString();
+                        } else {
+                        formatMinutes = minutes;
+                        }
+                    
+                        
+                        totalTime.innerHTML = "Total time: " + formatMinutes + ":" + formatSeconds;
                     };
+
+                    
+                    // Function to start/stop time
+                    const logTask = function(id){
+                        if(buttonStatusId === 1){
+                            interval = window.setInterval(timer, 1000);
+                            button.textContent = "Stop";
+                            buttonStatusId = 2;
+                            return buttonStatusId;
+                        } else {
+                            // When stopped the time will be automatically saved into db
+                            window.clearInterval(interval);
+                            button.textContent = "Start";
+                            buttonStatusId = 1;
+                            finalTime = formatMinutes + ":" + formatSeconds;
+
+                            // Insert result into database automatically
+
+                            const insertTask = async function(id) {
+                                const response = await fetch('/log', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        users_id: -1,
+                                        students_id: -1,
+                                        tasks_id: id,
+                                        duration: "'+00:" + formatMinutes + ":" + formatSeconds + "'"
+                                    })
+                                });
+                                const result = await response.json();
+                                console.log(result);
+                                currentTaskId = id;
+                            };
+                            insertTask(id);
+                            
+                            return buttonStatusId;
+                        }
+                    };
+                    
+                    // Reset function to clear time. Time when pressed will not be inserted into database.
+                    const reset = function(){
+                        window.clearInterval(interval);
+                        seconds = 0;
+                        minutes = 0;
+                        totalTime.innerHTML = "Total time: 00:00";
+                        buttonStatusId = 1;
+                        button.textContent = "Start";
+                    }
+                    
                 </script>
     </body>
 </html>
